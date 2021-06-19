@@ -24,7 +24,7 @@
 DEFINE_bool(check_term, true, "Check if the leader changed to another term");
 DEFINE_bool(disable_cli, false, "Don't allow raft_cli access this node");
 DEFINE_bool(log_applied_task, false, "Print notice log when a task is applied");
-DEFINE_int32(election_timeout_ms, 5000, 
+DEFINE_int32(election_timeout_ms, 5000,
             "Start election in such milliseconds if disconnect with the leader");
 DEFINE_int32(port, 8100, "Listen port of this peer");
 DEFINE_int32(snapshot_interval, 30, "Interval between each snapshot");
@@ -38,7 +38,7 @@ class Counter;
 // Implements Closure which encloses RPC stuff
 class FetchAddClosure : public braft::Closure {
 public:
-    FetchAddClosure(Counter* counter, 
+    FetchAddClosure(Counter* counter,
                     const FetchAddRequest* request,
                     CounterResponse* response,
                     google::protobuf::Closure* done)
@@ -107,7 +107,7 @@ public:
         // peers in the group receive this request as well.
         // Notice that _value can't be modified in this routine otherwise it
         // will be inconsistent with others in this group.
-        
+ 
         // Serialize request to IOBuf
         const int64_t term = _leader_term.load(butil::memory_order_relaxed);
         if (term < 0) {
@@ -123,7 +123,7 @@ public:
         // Apply this log as a braft::Task
         braft::Task task;
         task.data = &log;
-        // This callback would be iovoked when the task actually excuted or
+        // This callback would be invoked when the task actually executed or
         // fail
         task.done = new FetchAddClosure(this, request, response,
                                         done_guard.release());
@@ -136,7 +136,7 @@ public:
     }
 
     void get(CounterResponse* response) {
-        // In consideration of consistency. GetRequest to follower should be 
+        // In consideration of consistency. GetRequest to follower should be
         // rejected.
         if (!is_leader()) {
             // This node is a follower or it's not up-to-date. Redirect to
@@ -149,7 +149,7 @@ public:
         response->set_value(_value.load(butil::memory_order_relaxed));
     }
 
-    bool is_leader() const 
+    bool is_leader() const
     { return _leader_term.load(butil::memory_order_acquire) > 0; }
 
     // Shut this node down.
@@ -181,7 +181,7 @@ friend class FetchAddClosure;
 
     // @braft::StateMachine
     void on_apply(braft::Iterator& iter) {
-        // A batch of tasks are committed, which must be processed through 
+        // A batch of tasks are committed, which must be processed through
         // |iter|
         for (; iter.valid(); iter.next()) {
             int64_t detal_value = 0;
@@ -205,7 +205,7 @@ friend class FetchAddClosure;
 
             // Now the log has been parsed. Update this state machine by this
             // operation.
-            const int64_t prev = _value.fetch_add(detal_value, 
+            const int64_t prev = _value.fetch_add(detal_value,
                                                   butil::memory_order_relaxed);
             if (response) {
                 response->set_success(true);
@@ -215,7 +215,7 @@ friend class FetchAddClosure;
             // The purpose of following logs is to help you understand the way
             // this StateMachine works.
             // Remove these logs in performance-sensitive servers.
-            LOG_IF(INFO, FLAGS_log_applied_task) 
+            LOG_IF(INFO, FLAGS_log_applied_task)
                     << "Added value=" << prev << " by detal=" << detal_value
                     << " at log_index=" << iter.index();
         }
@@ -228,7 +228,7 @@ friend class FetchAddClosure;
     };
 
     static void *save_snapshot(void* arg) {
-        SnapshotArg* sa = (SnapshotArg*) arg;
+        SnapshotArg* sa = static_cast<SnapshotArg*>(arg);
         std::unique_ptr<SnapshotArg> arg_guard(sa);
         // Serialize StateMachine to the snapshot
         brpc::ClosureGuard done_guard(sa->done);
@@ -264,7 +264,7 @@ friend class FetchAddClosure;
     }
 
     int on_snapshot_load(braft::SnapshotReader* reader) {
-        // Load snasphot from reader, replacing the running StateMachine
+        // Load snapshot from reader, replacing the running StateMachine
         CHECK(!is_leader()) << "Leader is not supposed to load snapshot";
         if (reader->get_file_meta("data", NULL) != 0) {
             LOG(ERROR) << "Fail to find `data' on " << reader->get_path();
@@ -316,7 +316,7 @@ private:
 void FetchAddClosure::Run() {
     // Auto delete this after Run()
     std::unique_ptr<FetchAddClosure> self_guard(this);
-    // Repsond this RPC.
+    // Respond this RPC.
     brpc::ClosureGuard done_guard(_done);
     if (status().ok()) {
         return;
@@ -358,7 +358,7 @@ int main(int argc, char* argv[]) {
     example::CounterServiceImpl service(&counter);
 
     // Add your service into RPC server
-    if (server.AddService(&service, 
+    if (server.AddService(&service,
                           brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
         LOG(ERROR) << "Fail to add service";
         return -1;
